@@ -73,23 +73,25 @@ The frontend is a single-page application built with **HTML, CSS, Bootstrap, and
 Ensure all methods in API Gateway have:
 ```http
 Access-Control-Allow-Origin: *
+```
+
 
 #### 📊 Output
 
 -Adding a New Expense
-![image](https://github.com/user-attachments/assets/79a1cc66-cc9e-4112-9d19-632d6e349a38)
+  ![image](https://github.com/user-attachments/assets/79a1cc66-cc9e-4112-9d19-632d6e349a38)
 
 -Expense Table View
-![image](https://github.com/user-attachments/assets/b3e6e868-9bd4-498c-ab80-df6af215aefb)
+  ![image](https://github.com/user-attachments/assets/b3e6e868-9bd4-498c-ab80-df6af215aefb)
 
 -Expense Chart
-![image](https://github.com/user-attachments/assets/7c55b7bf-5fb7-4200-ae88-19839048fda9)
+  ![image](https://github.com/user-attachments/assets/7c55b7bf-5fb7-4200-ae88-19839048fda9)
 
 -SNS Alert Example
 -As you can see, my total expenses have crossed the threshold of ₹10,000.
 -I received an SNS email notification as shown below:
 
-![image](https://github.com/user-attachments/assets/013bda67-d08e-44ff-b97e-f4ac7a4841e1)
+  ![image](https://github.com/user-attachments/assets/013bda67-d08e-44ff-b97e-f4ac7a4841e1)
 
 
 
