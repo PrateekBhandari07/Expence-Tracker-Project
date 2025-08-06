@@ -1,118 +1,110 @@
 import json
 import boto3
 import uuid
-from datetime import datetime
 from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('Expense')
+table = dynamodb.Table('Prateek')
 
 sns = boto3.client('sns')
-SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:641017921669:hell'  
+SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:641017921669:Prateek'
+
+CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+}
 
 def lambda_handler(event, context):
-    method = event.get("httpMethod", "")
-    path_params = event.get("pathParameters") or {}
-    expense_id = path_params.get("id") if path_params else None
+    method = event['httpMethod']
 
-    user_id = "default_user"  # Hardcoded for now
+    if method == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'message': 'CORS preflight response'})
+        }
+    elif method == 'POST':
+        return add_expense(event)
+    elif method == 'GET':
+        return get_expenses(event)
+    else:
+        return {
+            'statusCode': 405,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': 'Method Not Allowed'})
+        }
 
+def add_expense(event):
     try:
-        if method == "POST":
-            if event.get("body") is None:
-                raise ValueError("Missing request body")
+        body = json.loads(event['body'])
+        user_id = body['userId']
+        expense_id = str(uuid.uuid4())
 
-            body = json.loads(event["body"])
-            amount = Decimal(str(body["amount"]))
-            category = body["category"]
-            date = body["date"]
-            description = body.get("description", "")
+        item = {
+            'userId': user_id,
+            'expenseId': expense_id,
+            'amount': Decimal(str(body['amount'])),
+            'category': body['category'],
+            'description': body.get('description', ''),
+            'date': body['date']
+        }
 
-            expense_id = str(uuid.uuid4())
-            timestamp = datetime.utcnow().isoformat()
+        table.put_item(Item=item)
+        response = table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+        expenses = response.get('Items', [])
 
-            item = {
-                'userId': user_id,
-                'expenseId': expense_id,
-                'amount': amount,
-                'category': category,
-                'description': description,
-                'date': date,
-                'createdAt': timestamp
-            }
+        # Calculate total amount
+        total_amount = sum(Decimal(str(exp['amount'])) for exp in expenses)
 
-            table.put_item(Item=item)
-
-            # Recalculate total expenses
-            response = table.query(KeyConditionExpression=Key('userId').eq(user_id))
-            total = sum(Decimal(str(entry['amount'])) for entry in response.get("Items", []))
-
-            # Send alert if threshold crossed
-            if total > Decimal("10000"):
-                message = f"⚠️ Expense Limit Exceeded!\n\nUser: {user_id}\nTotal: ₹{float(total):,.2f}"
-                sns.publish(
-                    TopicArn=SNS_TOPIC_ARN,
-                    Subject="Expense Tracker Alert",
-                    Message=message
-                )
-
-            return response_json(200, {
-                "message": "Expense added successfully.",
-                "id": expense_id,
-                "total": float(total)
-            })
-
-        elif method == "GET":
-            response = table.query(KeyConditionExpression=Key('userId').eq(user_id))
-            items = sorted(response["Items"], key=lambda x: x.get("createdAt", ""), reverse=True)
-            return response_json(200, items)
-
-        elif method == "PUT" and expense_id:
-            if event.get("body") is None:
-                raise ValueError("Missing request body for update")
-
-            body = json.loads(event["body"])
-            update_expr = "SET "
-            expr_attr_values = {}
-            expr_attr_names = {}
-
-            if "amount" in body:
-                update_expr += "#a = :amount, "
-                expr_attr_values[":amount"] = Decimal(str(body["amount"]))
-                expr_attr_names["#a"] = "amount"
-            if "description" in body:
-                update_expr += "#d = :desc, "
-                expr_attr_values[":desc"] = body["description"]
-                expr_attr_names["#d"] = "description"
-
-            update_expr = update_expr.rstrip(", ")
-
-            table.update_item(
-                Key={"userId": user_id, "expenseId": expense_id},
-                UpdateExpression=update_expr,
-                ExpressionAttributeNames=expr_attr_names,
-                ExpressionAttributeValues=expr_attr_values
+        # If total crosses 10000, send SNS alert
+        if total_amount > 10000:
+            message = (
+                f"Total Expense Alert!\n\n"
+                f"User ID: {user_id}\n"
+                f"Total Expenses: ₹{total_amount}\n"
+                f"Threshold: ₹10000\n\n"
+                f"This is a cumulative alert for this you."
+            )
+            sns.publish(
+                TopicArn=SNS_TOPIC_ARN,
+                Subject='🚨 Total Expense Limit Crossed!',
+                Message=message
             )
 
-            return response_json(200, {"message": "Expense updated successfully."})
-
-        elif method == "DELETE" and expense_id:
-            table.delete_item(
-                Key={"userId": user_id, "expenseId": expense_id}
-            )
-            return response_json(200, {"message": "Expense deleted successfully."})
-
-        else:
-            return response_json(405, {"error": f"{method} method not allowed or missing ID"})
-
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'message': 'Expense added successfully', 'expenseId': expense_id})
+        }
     except Exception as e:
-        return response_json(500, {"error": str(e)})
+        return {
+            'statusCode': 500,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': str(e)})
+        }
 
-def response_json(status_code, body):
-    return {
-        "statusCode": status_code,
-        "headers": {"Access-Control-Allow-Origin": "*"},
-        "body": json.dumps(body, default=str)
-    }
+def get_expenses(event):
+    try:
+        user_id = event['queryStringParameters'].get('userId')
 
+        response = table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+
+        expenses = response.get('Items', [])
+
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps(expenses, default=str)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': str(e)})
+        }
