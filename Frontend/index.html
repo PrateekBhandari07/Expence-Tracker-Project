@@ -46,7 +46,7 @@
         </div>
 
         <div class="d-flex justify-content-center gap-3 mb-4">
-            <button class="btn btn-dark" onclick="showSection('form-section')">+ Add Expense</button>
+            <button class="btn btn-outline-dark" onclick="showSection('form-section')">+ Add Expense</button>
             <button class="btn btn-outline-dark" onclick="showHistory()">View History</button>
             <button class="btn btn-outline-dark" onclick="showSection('chart-section')">Expense Chart</button>
         </div>
@@ -154,7 +154,7 @@
                 description: desc
             };
 
-            await fetch("https://b6ah9gezd4.execute-api.us-east-1.amazonaws.com/prod/expenses", {
+            await fetch("https://bfsd44tnyb.execute-api.us-east-1.amazonaws.com/prod/expenses", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -170,7 +170,7 @@
         }
 
         async function fetchAndDisplayHistory() {
-            const response = await fetch("https://b6ah9gezd4.execute-api.us-east-1.amazonaws.com/prod/expenses");
+            const response = await fetch("https://bfsd44tnyb.execute-api.us-east-1.amazonaws.com/prod/expenses?userId=default_user");
             const data = await response.json();
 
             historyList.innerHTML = "";
