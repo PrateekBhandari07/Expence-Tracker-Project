@@ -1,0 +1,10 @@
+{
+  "httpMethod": "POST",
+  "body": "{\"userId\": \"rakesh123\", \"amount\": 2500, \"category\": \"Food\", \"description\": \"Test Lunch\", \"date\": \"2025-08-05\"}"
+}
+{
+  "httpMethod": "GET",
+  "queryStringParameters": {
+    "userId": "rakesh123"
+  }
+}
